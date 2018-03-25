@@ -1,46 +1,54 @@
 import React from 'react';
-import {StyleSheet, Text, TextInput, View, Button, FlatList, Alert} from 'react-native';
+import { StyleSheet, Text, TextInput, View, FlatList, Alert, Dimensions } from 'react-native';
 import Expo, { SQLite } from 'expo';
+import { FormLabel, FormInput, Button, List, ListItem, Card } from 'react-native-elements';
 
-const db = SQLite.openDatabase('shoppinglistdb.db');
+const db = SQLite.openDatabase('shoppingdb.db');
+const width = Dimensions.get("window").width;
 
 export default class App extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {product: '', amount: '', shoppinglist: []};
+    this.state = {
+      product: '', amount: '', shoppingList: []
+    }
   }
 
-  componentDidMount() {
-    // Create shoppinglist table
+ 
+    // Create shopping table
+    componentDidMount() {
     db.transaction(tx => {
-      tx.executeSql('create table if not exists shoppinglist (id integer primary key not null, products int, amount text);');
+      tx.executeSql('create table if not exists shopping (id integer primary key not null, product text, amount int);');
     });
     this.updateList();
+
   }
 
-  // Save shoppinglist
+  // Save shopping
   saveItem = () => {
+    console.log(this.state)
     db.transaction(tx => {
-        tx.executeSql('insert into shoppinglist (products, amount) values (?, ?)', [parseInt(this.state.product), this.state.amount]);    
-      }, null, this.updateList)
+      tx.executeSql('insert into shopping (product, amount) values (?, ?)', [this.state.product, parseInt(this.state.amount)]);
+    }, null, this.updateList)    
   }
 
-  // Update shoppinglistlist
+  // Update shoppinglist
   updateList = () => {
     db.transaction(tx => {
-      tx.executeSql('select * from shoppinglist', [], (_, { rows }) =>
-        this.setState({shoppinglist: rows._array})
-      ); 
+      tx.executeSql('select * from shopping', [], (_, { rows }) => 
+        this.setState({ shoppingList: rows._array })
+      );
     });
+    console.log('update', this.state.shoppingList)
   }
 
-  // Delete shoppinglist
+  // Delete shopping
   deleteItem = (id) => {
     db.transaction(
       tx => {
-        tx.executeSql(`delete from shoppinglist where id = ?;`, [id]);
+        tx.executeSql(`delete from shopping where id = ?;`, [id]);
       }, null, this.updateList
-    )    
+    )
   }
 
   listSeparator = () => {
@@ -56,24 +64,45 @@ export default class App extends React.Component {
     );
   };
 
+  renderListProducts = () => {
+   const shoppingList2 = this.state.shoppingList.map((value, index) => { 
+      return ( <ListItem
+       
+        subtitle={value.amount}
+        title={value.product}
+        key={index}
+        rightTitle="bought" 
+        onPress={() => this.deleteItem(value.id)}
+      />
+    )
+    })
+    return shoppingList2
+  }
   render() {
-    return (  
+    console.log(this.state)
+    return (
       <View style={styles.container}>
-        <TextInput placeholder='amount' style={{marginTop: 30, fontSize: 18, width: 200, borderColor: 'gray', borderWidth: 1}}
-          onChangeText={(amount) => this.setState({amount})}
-          value={this.state.amount}/>  
-        <TextInput placeholder='products' style={{ marginTop: 5, marginBottom: 5,  fontSize:18, width: 200, borderColor: 'gray', borderWidth: 1}}
-          onChangeText={(product) => this.setState({product})}
-          value={this.state.product}/>      
-        <Button onPress={this.saveItem} title="Save" /> 
-        <Text style={{marginTop: 30, fontSize: 20}}>shoppinglist</Text>
-        <FlatList 
-          style={{marginLeft : "5%"}}
-          keyExtractor={item => item.id} 
-          renderItem={({item}) => <View style={styles.listcontainer}><Text style={{fontSize: 18}}>{item.amount}, {item.products}   </Text>
-          <Text style={{fontSize: 18, color: '#0000ff'}} onPress={() => this.deleteItem(item.id)}>bought</Text></View>} data={this.state.shoppinglist} ItemSeparatorComponent={this.listSeparator} 
-        />      
-      </View>
+      <Card title="Shopping list" style={{backgroundColor: '#9999ff'}} >
+        <FormLabel>Product</FormLabel>
+        <FormInput placeholder='type product' style={{ marginTop: 5, marginBottom: 5, fontSize: 18, width: 200, borderColor: 'gray', borderWidth: 1 }}
+          onChangeText={(product) => this.setState({ product })}
+          value={this.state.product} />
+        <FormLabel>Amount</FormLabel>
+        <FormInput placeholder='type amount' style={{ marginTop: 30, fontSize: 18, width: 200, borderColor: 'gray', borderWidth: 1 }}
+          onChangeText={(amount) => this.setState({ amount })}
+          value={this.state.amount} />
+        <Button buttonStyle={{paddingLeft: 150, paddingRight: 150}} raised onPress={this.saveItem} title="Save" />
+        </Card>
+        <Text style={{ marginTop: 20, fontSize: 20 }}>My shopping list</Text>
+       
+
+        <List containerStyle={{ width, marginBottom: 20 }}>
+          {
+            this.renderListProducts()
+          }
+          
+        </List>
+        </View>
     );
   }
 
@@ -90,5 +119,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#fff',
     alignItems: 'center'
-  }  
+  }
 });
